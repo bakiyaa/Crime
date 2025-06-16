@@ -9,7 +9,7 @@ import google.generativeai as genai
 # 1. Setup
 image_dir = "/content/drive/MyDrive/vlm/DataGen/"  #  Put your image folder path
 output_file = "/content/drive/MyDrive/vlm/DataGen/final_vlm_dataset_gemini.json"
-genai.configure(api_key="AIzaSyDkPatDQ2TrYGN0aLt63TB4_kdHH_QtFYo")
+genai.configure(api_key="")
 
 # 2. Load BLIP model for captioning
 processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
