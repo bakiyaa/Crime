@@ -1,1 +1,78 @@
 AIzaSyDkPatDQ2TrYGN0aLt63TB4_kdHH_QtFYo
+# generate_vlm_data_gemini.py
+
+import os, json, random
+from PIL import Image
+from transformers import BlipProcessor, BlipForConditionalGeneration
+import google.generativeai as genai
+
+# 1. Setup
+image_dir = "/content/drive/MyDrive/vlm/DataGen/"  #  Put your image folder path
+output_file = "/content/drive/MyDrive/vlm/DataGen/final_vlm_dataset_gemini.json"
+genai.configure(api_key="AIzaSyDkPatDQ2TrYGN0aLt63TB4_kdHH_QtFYo")
+
+# 2. Load BLIP model for captioning
+processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+
+# 3. Forensic prompts
+prompts = [
+    "Describe the bloodstain and infer the event that caused it.",
+    "What could have caused this bloodstain?",
+    "What type of weapon might have caused this pattern?",
+    "Classify the type of bloodstain pattern (e.g., spatter, passive, arterial).",
+    "What kind of force may have produced this bloodstain?",
+    "Determine the direction or trajectory of the blood flow.",
+    "What environmental factors influenced this bloodstain?"
+]
+
+# 4. Gemini-based answer generation
+def get_gemini_response(prompt, caption, image_path):
+    model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+    try:
+        img = Image.open(image_path).convert("RGB")
+        response = model.generate_content([
+            img,
+            f"Image caption: {caption}\nQuestion: {prompt}"
+        ])
+        return response.text.strip()
+    except Exception as e:
+        return f"Error generating Gemini response: {e}"
+
+# 5. Loop through images and build conversations
+dataset = []
+for fname in os.listdir(image_dir):
+    if not fname.lower().endswith(".jpg"): continue
+    image_path = os.path.join(image_dir, fname)
+
+    # Generate caption using BLIP
+    image = Image.open(image_path).convert("RGB")
+    inputs = processor(images=image, return_tensors="pt")
+    out = model.generate(**inputs)
+    caption = processor.decode(out[0], skip_special_tokens=True)
+
+    conversations = []
+    conversations.append({"from": "human", "value": f"<image>\nDescribe the image."})
+    conversations.append({"from": "gpt", "value": caption})
+
+    # Generate Gemini responses to forensic prompts
+    for prompt in prompts:
+        response = get_gemini_response(prompt, caption, image_path)
+        conversations.append({"from": "human", "value": f"<image>\n{prompt}"})
+        conversations.append({"from": "gpt", "value": response})
+
+    # Append entry to dataset
+    dataset.append({
+        "id": fname,
+        "image": image_path,
+        "caption": caption,
+        "conversations": conversations
+    })
+
+# 6. Save dataset
+with open(output_file, "w") as f:
+    json.dump(dataset, f, indent=2)
+
+print(f"\n✅ Dataset saved to {output_file}")
+
+
