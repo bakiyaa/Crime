@@ -1,4 +1,4 @@
-AIzaSyDkPatDQ2TrYGN0aLt63TB4_kdHH_QtFYo
+
 # generate_vlm_data_gemini.py
 
 import os, json, random
